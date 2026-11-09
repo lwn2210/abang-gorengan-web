@@ -42,19 +42,43 @@ export function dayResult(s: GameState): DayResult {
   }
 }
 
+export interface Upgrades {
+  turboStove: number
+  cabeSetan: number
+  esTeh: number
+  minyakEmas: number
+}
+
+export const DEFAULT_UPGRADES: Upgrades = {
+  turboStove: 0,
+  cabeSetan: 0,
+  esTeh: 0,
+  minyakEmas: 0,
+}
+
 export interface Progress {
   /** The day to play next. */
   day: number
   /** Reputation going into it. */
   rep: number
+  /** Accumulated savings for the upgrade shop. */
+  savings?: number
+  /** Purchased shop upgrades. */
+  upgrades?: Upgrades
 }
 
-export const NEW_GAME: Progress = { day: 1, rep: REP_START }
+export const NEW_GAME: Progress = { day: 1, rep: REP_START, savings: 0, upgrades: { ...DEFAULT_UPGRADES } }
 
 /** Passing moves on with the reputation earned; failing replays the day as it started. */
-export function nextProgress(s: GameState): Progress {
+export function nextProgress(s: GameState, current?: Progress): Progress {
   const r = dayResult(s)
-  return r.passed ? { day: s.day + 1, rep: s.rep } : { day: s.day, rep: s.repStart }
+  const base = r.passed ? { day: s.day + 1, rep: s.rep } : { day: s.day, rep: s.repStart }
+  if (current) {
+    const savings = (current.savings ?? 0) + (r.passed ? r.earnings : 0)
+    const upgrades = current.upgrades ?? { ...DEFAULT_UPGRADES }
+    return { ...base, savings, upgrades }
+  }
+  return base
 }
 
 export interface Records {
@@ -102,7 +126,10 @@ export function parseProgress(raw: string | null): Progress {
     const o = JSON.parse(raw ?? '{}') as Partial<Progress>
     const day = typeof o.day === 'number' && o.day >= 1 ? Math.floor(o.day) : 1
     const rep = typeof o.rep === 'number' && o.rep > 0 && o.rep <= 5 ? o.rep : REP_START
-    return { day, rep }
+    const res: Progress = { day, rep }
+    if (typeof o.savings === 'number' && o.savings >= 0) res.savings = o.savings
+    if (o.upgrades && typeof o.upgrades === 'object') res.upgrades = { ...DEFAULT_UPGRADES, ...o.upgrades }
+    return res
   } catch {
     return { ...NEW_GAME }
   }

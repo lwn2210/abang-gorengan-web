@@ -1,7 +1,19 @@
 import { ITEMS, dayConfig, rupiah } from './sim/menu'
 import { DAY_LENGTH, DT, clockAt, createDay, earnings, step, type GameState } from './sim/game'
 import { botAct } from './sim/bot'
-import { NEW_GAME, dayResult, nextProgress, parseProgress, parseRecords, updateRecords, type DayResult, type Progress, type Records } from './sim/progress'
+import {
+  DEFAULT_UPGRADES,
+  NEW_GAME,
+  dayResult,
+  nextProgress,
+  parseProgress,
+  parseRecords,
+  updateRecords,
+  type DayResult,
+  type Progress,
+  type Records,
+  type Upgrades,
+} from './sim/progress'
 import { Scene } from './render/scene'
 import { Input } from './input'
 import { Sfx } from './audio'
@@ -105,6 +117,8 @@ export class App {
     requestAnimationFrame((t) => this.frame(t))
   }
 
+  private shopPreviousOverlay: 'intro' | 'result' | 'menu' = 'intro'
+
   private bindUi(): void {
     $('mute').addEventListener('click', () => this.toggleMute())
     $('mute').textContent = this.sfx.muted ? '🔇' : '🔊'
@@ -121,14 +135,17 @@ export class App {
     $('next').addEventListener('click', () => this.showIntro(this.progress))
     $('to-menu').addEventListener('click', () => this.showMenu())
     $('share-score').addEventListener('click', () => this.shareResult())
+    $('open-shop-intro').addEventListener('click', () => this.showShop('intro'))
+    $('open-shop-result').addEventListener('click', () => this.showShop('result'))
+    $('close-shop').addEventListener('click', () => this.closeShop())
   }
 
   private toggleMute(): void {
     $('mute').textContent = this.sfx.toggleMute() ? '🔇' : '🔊'
   }
 
-  private overlay(id: 'menu' | 'intro' | 'paused' | 'result' | null): void {
-    for (const o of ['menu', 'intro', 'paused', 'result']) $(o).hidden = o !== id
+  private overlay(id: 'menu' | 'intro' | 'paused' | 'result' | 'shop' | null): void {
+    for (const o of ['menu', 'intro', 'paused', 'result', 'shop']) $(o).hidden = o !== id
     $('hud').hidden = this.mode !== 'play' && this.mode !== 'pause'
   }
 
@@ -151,7 +168,7 @@ export class App {
   private showIntro(p: Progress): void {
     this.mode = 'intro'
     this.input.enabled = false
-    this.state = createDay(p.day, newSeed(), p.rep)
+    this.state = createDay(p.day, newSeed(), p.rep, p.upgrades)
     const cfg = dayConfig(p.day)
     $('intro-title').textContent = `Hari ${cfg.day}`
     $('intro-sub').textContent = cfg.day === 1 ? 'Hari pertama buka lapak gorengan!' : 'Gerobak siap, minyak udah panas.'
@@ -193,7 +210,7 @@ export class App {
     this.lastResult = res
     const { records, newBest } = updateRecords(this.records, res)
     this.records = records
-    this.progress = nextProgress(s)
+    this.progress = nextProgress(s, this.progress)
     save(RECORDS_KEY, records)
     save(PROGRESS_KEY, this.progress)
     this.mode = 'result'
@@ -249,6 +266,100 @@ export class App {
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
       })
     }
+  }
+
+  private showShop(from: 'intro' | 'result' | 'menu'): void {
+    this.shopPreviousOverlay = from
+    this.renderShop()
+    this.overlay('shop')
+  }
+
+  private renderShop(): void {
+    const p = this.progress
+    const savings = p.savings ?? 0
+    const upgrades = p.upgrades ?? { ...DEFAULT_UPGRADES }
+    $('shop-savings').textContent = `Tabungan: ${rupiah(savings)}`
+
+    const list = $('shop-list')
+    list.innerHTML = ''
+
+    const SHOP_ITEMS = [
+      {
+        id: 'turboStove' as const,
+        name: 'Kompor Gas Turbo',
+        icon: '🔥',
+        desc: 'Minyak lebih cepat panas dan menggoreng 20% lebih gesit.',
+        maxLevel: 2,
+        cost: (lvl: number) => (lvl === 0 ? 25000 : 50000),
+        benefit: (lvl: number) => (lvl > 0 ? `Level ${lvl}: +${lvl * 20}% Kecepatan Goreng` : 'Belum dibeli'),
+      },
+      {
+        id: 'cabeSetan' as const,
+        name: 'Cabe Rawit Setan',
+        icon: '🌶️',
+        desc: 'Cabe rawit mantap bikin pembeli puas ngasih tip lebih banyak.',
+        maxLevel: 2,
+        cost: (lvl: number) => (lvl === 0 ? 20000 : 40000),
+        benefit: (lvl: number) => (lvl > 0 ? `Level ${lvl}: +Rp ${lvl * 500} Tip Tiap Order` : 'Belum dibeli'),
+      },
+      {
+        id: 'minyakEmas' as const,
+        name: 'Minyak Sawit Emas',
+        icon: '🛢️',
+        desc: 'Minyak jernih berkualitas, gorengan tahan matang lebih lama sebelum gosong.',
+        maxLevel: 2,
+        cost: (lvl: number) => (lvl === 0 ? 20000 : 45000),
+        benefit: (lvl: number) => (lvl > 0 ? `Level ${lvl}: +${lvl * 35}% Waktu Tahan Gosong` : 'Belum dibeli'),
+      },
+      {
+        id: 'esTeh' as const,
+        name: 'Termos Es Teh Manis',
+        icon: '🧊',
+        desc: 'Kasih es teh manis dingin buat pembeli yang nunggu di antrean.',
+        maxLevel: 1,
+        cost: () => 30000,
+        benefit: (lvl: number) => (lvl > 0 ? 'Aktif: +25% Kesabaran Antrean' : 'Belum aktif'),
+      },
+    ]
+
+    for (const item of SHOP_ITEMS) {
+      const currentLevel = upgrades[item.id] ?? 0
+      const isMax = currentLevel >= item.maxLevel
+      const cost = isMax ? 0 : item.cost(currentLevel)
+      const canAfford = savings >= cost && !isMax
+
+      const card = document.createElement('div')
+      card.className = 'shop-card'
+      card.innerHTML = `
+        <div class="shop-icon">${item.icon}</div>
+        <div class="shop-info">
+          <div class="shop-title">${item.name} (${currentLevel}/${item.maxLevel})</div>
+          <div class="shop-desc">${item.desc}</div>
+          <div class="shop-stat">${item.benefit(currentLevel)}</div>
+        </div>
+        <button class="shop-buy" ${canAfford ? '' : 'disabled'}>
+          ${isMax ? 'MAX ✅' : `Beli ${rupiah(cost)}`}
+        </button>
+      `
+
+      const btn = card.querySelector<HTMLButtonElement>('.shop-buy')!
+      if (canAfford) {
+        btn.addEventListener('click', () => {
+          this.progress.savings = savings - cost
+          this.progress.upgrades = { ...upgrades, [item.id]: currentLevel + 1 }
+          save(PROGRESS_KEY, this.progress)
+          this.sfx.ding()
+          this.renderShop()
+        })
+      }
+      list.appendChild(card)
+    }
+  }
+
+  private closeShop(): void {
+    if (this.shopPreviousOverlay === 'intro') this.showIntro(this.progress)
+    else if (this.shopPreviousOverlay === 'result') this.overlay('result')
+    else this.showMenu()
   }
 
   private frame(now: number): void {

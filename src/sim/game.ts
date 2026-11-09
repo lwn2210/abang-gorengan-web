@@ -148,6 +148,12 @@ export interface GameState {
   rep: number
   repStart: number
   stats: DayStats
+  upgrades?: {
+    turboStove?: number
+    cabeSetan?: number
+    esTeh?: number
+    minyakEmas?: number
+  }
 }
 
 export type Action =
@@ -204,7 +210,12 @@ export type SimEvent =
   | { e: 'closing' }
   | { e: 'over'; failed: boolean }
 
-export function createDay(day: number, seed: number, rep: number = REP_START): GameState {
+export function createDay(
+  day: number,
+  seed: number,
+  rep: number = REP_START,
+  upgrades?: { turboStove?: number; cabeSetan?: number; esTeh?: number; minyakEmas?: number },
+): GameState {
   const config = dayConfig(day)
   return {
     day: config.day,
@@ -227,6 +238,7 @@ export function createDay(day: number, seed: number, rep: number = REP_START): G
     rep: clampRep(rep),
     repStart: clampRep(rep),
     stats: { sales: 0, tips: 0, served: 0, walkouts: 0, burnt: 0, wrong: 0, sold: 0 },
+    upgrades: upgrades ? { ...upgrades } : undefined,
   }
 }
 
@@ -455,8 +467,9 @@ function apply(s: GameState, a: Action, ev: SimEvent[]): void {
       }
       const pay = orderPrice(c.order)
       const tip = tipFor(c, b)
+      const bonusTip = tip > 0 && s.upgrades?.cabeSetan ? s.upgrades.cabeSetan * 500 : 0
       s.stats.sales += pay
-      s.stats.tips += tip
+      s.stats.tips += tip + bonusTip
       s.stats.served++
       s.stats.sold += b.items.length
       s.rep = clampRep(s.rep + REP_SERVED + (tip > 0 ? REP_TIP : 0))
@@ -493,7 +506,8 @@ function updateOil(s: GameState, ev: SimEvent[]): void {
 }
 
 function updateWok(s: GameState, ev: SimEvent[]): void {
-  const speed = cookSpeed(s.oil)
+  const boost = 1 + 0.2 * (s.upgrades?.turboStove ?? 0)
+  const speed = cookSpeed(s.oil) * boost
   s.wok.forEach((f, slot) => {
     if (!f || f.burnt) return
     f.cook += speed * DT
@@ -502,7 +516,8 @@ function updateWok(s: GameState, ev: SimEvent[]): void {
       f.dinged = true
       ev.push({ e: 'ding', slot, kind: f.kind })
     }
-    if (f.dinged && d >= burnPoint(f.kind, s.overheated)) {
+    const burnPt = burnPoint(f.kind, s.overheated) * (1 + 0.35 * (s.upgrades?.minyakEmas ?? 0))
+    if (f.dinged && d >= burnPt) {
       f.burnt = true
       s.stats.burnt++
       s.rep = clampRep(s.rep - REP_BURNT)
@@ -512,7 +527,8 @@ function updateWok(s: GameState, ev: SimEvent[]): void {
 }
 
 function updateCustomers(s: GameState, ev: SimEvent[]): void {
-  const drain = (s.overheated ? SMOKE_IMPATIENCE : 1) * DT
+  const patienceFactor = Math.max(0.6, 1 - 0.25 * (s.upgrades?.esTeh ?? 0))
+  const drain = (s.overheated ? SMOKE_IMPATIENCE : 1) * DT * patienceFactor
   for (const c of s.customers) {
     if (c.phase === 'arriving') {
       c.timer -= DT
