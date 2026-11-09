@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#a0643a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Abang Gorengan</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍤</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <div id="top">
+        <div id="hud" hidden>
+          <div class="chip day">
+            <span id="hud-day" class="label">Hari 1</span>
+            <b id="hud-clock">06:00</b>
+            <div class="time"><div id="hud-time"></div></div>
+          </div>
+          <div class="chip money">
+            <div class="row"><b id="hud-money">Rp0</b><span id="hud-target" class="label">/ 30rb</span></div>
+            <div class="meter"><div id="hud-meter"></div></div>
+          </div>
+          <div class="chip rep" aria-label="Reputasi">
+            <div class="stars"><span class="empty">★★★★★</span><span class="fill" id="hud-stars-fill">★★★★★</span></div>
+            <span class="label"><i class="star">★</i><span id="hud-rep">3.0</span></span>
+          </div>
+          <button id="pause" class="round pause" aria-label="Jeda"></button>
+        </div>
+        <button id="mute" class="round" aria-label="Suara nyala/mati">🔊</button>
+      </div>
+
+      <div id="menu" class="overlay">
+        <div class="panel">
+          <h1>Abang Gorengan</h1>
+          <p class="tagline">Gorengan anget, pembeli antre, minyak jangan sampai kepanasan.</p>
+          <button id="play" class="btn">Mulai dagang</button>
+          <button id="restart" class="btn ghost" hidden>Mulai dari hari 1</button>
+          <p class="records" id="menu-records"></p>
+          <details class="how">
+            <summary>Cara main</summary>
+            <ul>
+              <li><b>Ketuk adonan</b> di bawah. Yang ada titik biru harus <b>dicelup tepung</b> dulu.</li>
+              <li><b>Masukin ke wajan</b>, tunggu indikatornya <b>hijau</b>, lalu ketuk buat <b>angkat</b> ke peniris.</li>
+              <li>Tunggu netes, <b>ketuk gorengan</b> di peniris buat dibungkus. Tambah cabe/saus kalau diminta.</li>
+              <li><b>Ketuk pembeli</b> buat nyerahin bungkusnya. Cepet = tip!</li>
+              <li>Semua bisa juga <b>diseret</b>. Kompor <b>Besar</b> bikin cepet mateng tapi minyak bisa kepanasan.</li>
+              <li>Keyboard: <kbd>1</kbd>–<kbd>6</kbd> adonan, <kbd>T</kbd> tepung, <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd> wajan, <kbd>A</kbd> bungkus, <kbd>Z</kbd>/<kbd>X</kbd> kertas/plastik, <kbd>C</kbd>/<kbd>V</kbd> cabe/saus, <kbd>7</kbd>–<kbd>0</kbd> serahkan, <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> kompor, <kbd>M</kbd> suara, <kbd>P</kbd> jeda.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+
+      <div id="intro" class="overlay" hidden>
+        <div class="panel">
+          <h2 id="intro-title">Hari 1</h2>
+          <p class="tagline" id="intro-sub"></p>
+          <ul class="news" id="intro-news"></ul>
+          <p class="small" id="intro-menu"></p>
+          <p class="target" id="intro-target"></p>
+          <button id="start-day" class="btn">Buka lapak!</button>
+        </div>
+      </div>
+
+      <div id="paused" class="overlay" hidden>
+        <div class="panel">
+          <h2>Istirahat dulu</h2>
+          <p class="tagline">Waktu berhenti dulu. Kalau keluar ke menu, hari ini diulang dari awal.</p>
+          <button id="resume" class="btn">Lanjut dagang</button>
+          <button id="quit" class="btn ghost">Keluar ke menu</button>
+        </div>
+      </div>
+
+      <div id="result" class="overlay" hidden>
+        <div class="panel">
+          <h2 id="result-title">Hari 1 beres!</h2>
+          <p class="tagline" id="result-sub"></p>
+          <p class="money" id="result-money">Rp0</p>
+          <p class="small" id="result-target"></p>
+          <div class="stats" id="result-stats"></div>
+          <p class="records" id="result-best"></p>
+          <button id="next" class="btn">Lanjut</button>
+          <button id="to-menu" class="btn ghost">Menu</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
