@@ -1,7 +1,7 @@
 import { ITEMS, dayConfig, rupiah } from './sim/menu'
 import { DAY_LENGTH, DT, clockAt, createDay, earnings, step, type GameState } from './sim/game'
 import { botAct } from './sim/bot'
-import { NEW_GAME, dayResult, nextProgress, parseProgress, parseRecords, updateRecords, type Progress, type Records } from './sim/progress'
+import { NEW_GAME, dayResult, nextProgress, parseProgress, parseRecords, updateRecords, type DayResult, type Progress, type Records } from './sim/progress'
 import { Scene } from './render/scene'
 import { Input } from './input'
 import { Sfx } from './audio'
@@ -61,6 +61,7 @@ export class App {
   private last = performance.now()
   private progress: Progress
   private records: Records
+  private lastResult: DayResult | null = null
   private hudCache = new Map<string, string>()
   /** `?debug`: a live log of actions and refusals, for devices without a console. */
   private debug = import.meta.env.DEV && new URLSearchParams(location.search).has('debug')
@@ -119,6 +120,7 @@ export class App {
     $('quit').addEventListener('click', () => this.showMenu())
     $('next').addEventListener('click', () => this.showIntro(this.progress))
     $('to-menu').addEventListener('click', () => this.showMenu())
+    $('share-score').addEventListener('click', () => this.shareResult())
   }
 
   private toggleMute(): void {
@@ -188,6 +190,7 @@ export class App {
   private endDay(): void {
     const s = this.state
     const res = dayResult(s)
+    this.lastResult = res
     const { records, newBest } = updateRecords(this.records, res)
     this.records = records
     this.progress = nextProgress(s)
@@ -220,6 +223,32 @@ export class App {
     $('next').textContent = res.passed ? `Lanjut Hari ${this.progress.day}` : `Ulangi Hari ${this.progress.day}`
     $('result').classList.toggle('win', res.passed)
     this.overlay('result')
+  }
+
+  private shareResult(): void {
+    const res = this.lastResult
+    if (!res) return
+    const text =
+      `🥢 LAPORAN DAGANG ABANG GORENGAN 🥢\n` +
+      `📅 Hari: ${res.day}\n` +
+      `💰 Total Omzet: ${rupiah(res.earnings)} (Target: ${rupiah(res.target)})\n` +
+      `😊 Pembeli Puas: ${res.served}\n` +
+      `⭐ Reputasi: ${res.rep.toFixed(1)}/5.0 ★\n` +
+      `🔥 Gorengan Gosong: ${res.burnt}\n\n` +
+      `Bisa kalahin omzet dagang saya? Main gratis di:\n` +
+      `👉 https://lwn2210.github.io/mini-arcade/abang-gorengan/`
+
+    const btn = $('share-score')
+    if (navigator.share) {
+      navigator.share({ title: 'Rekor Abang Gorengan!', text, url: 'https://lwn2210.github.io/mini-arcade/abang-gorengan/' }).catch(() => {})
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '✓ Rekor Disalin ke Clipboard!'
+        setTimeout(() => { btn.textContent = '📤 Pamer Rekor (WhatsApp/Medsos)' }, 2000)
+      }).catch(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
+      })
+    }
   }
 
   private frame(now: number): void {

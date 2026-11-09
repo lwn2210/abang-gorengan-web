@@ -308,6 +308,18 @@ h2 {
   box-shadow: 0 2px 0 var(--accent-dark);
 }
 
+.btn.share {
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  box-shadow: 0 5px 0 #075E54;
+  font-size: 17px;
+  padding: 10px 24px;
+  margin-bottom: 10px;
+}
+.btn.share:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #075E54;
+}
+
 .btn.ghost {
   background: transparent;
   color: var(--ink-soft);
