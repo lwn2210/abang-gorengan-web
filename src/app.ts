@@ -12,7 +12,6 @@ import {
   type DayResult,
   type Progress,
   type Records,
-  type Upgrades,
 } from './sim/progress'
 import { Scene } from './render/scene'
 import { Input } from './input'

@@ -156,6 +156,11 @@ export class Sfx {
     }
   }
 
+  /** Confirmation for a completed shop purchase; no context is created here. */
+  ding(): void {
+    this.event({ e: 'ding', slot: 0, kind: 'bakwan' })
+  }
+
   event(e: SimEvent): void {
     const ctx = this.ready()
     if (!ctx) return
